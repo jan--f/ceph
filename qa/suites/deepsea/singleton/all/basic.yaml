@@ -1,0 +1,5 @@
+roles:
+- - master.1
+tasks:
+- deepsea:
+    master: master.1
