@@ -1,5 +1,12 @@
 roles:
 - - master.1
+- - osd.1
+  - mon.a
+- - osd.2
+  - mon.b
+- - osd.3
+  - mon.c
+- - osd.4
 tasks:
 - deepsea:
     master: master.1
