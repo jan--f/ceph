@@ -41,6 +41,7 @@ class DeepSea(Task):
 
         salt = Salt(self.ctx, self.config)
         salt.init_minions()
+        salt.start_master()
         salt.start_minions()
         salt.ping_minions()
 
