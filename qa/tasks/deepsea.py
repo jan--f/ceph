@@ -17,14 +17,13 @@ class DeepSea(Task):
 
     def __init__(self, ctx, config):
         super(DeepSea, self).__init__(ctx, config)
-        self.log = log
-        self.ctx = ctx
         try:
             self.master = self.config['master']
         except KeyError:
-            raise ConfigError('deepsea requires a master')
+            raise ConfigError('deepsea requires a master role')
 
-        self.master_remote = get_remote_for_role(self.ctx, self.master)
+        self.config["master_remote"] = get_remote_for_role(self.ctx,
+                self.master).name
 
     def setup(self):
         super(DeepSea, self).setup()
@@ -35,10 +34,15 @@ class DeepSea(Task):
             msg = 'master role ({0}) must be a master'.format(self.master)
             raise ConfigError(msg)
 
-        self.log.info("master remote: {}".format(self.master_remote))
+        self.log.info("master remote: {}".format(self.config["master_remote"]))
 
         self.ctx.cluster.only(lambda role: role.startswith("master")).run(args=['git',
             'clone', 'https://github.com/SUSE/DeepSea.git'])
+
+        salt = Salt(self.ctx, self.config)
+        salt.init_minions()
+        salt.start_minions()
+        salt.ping_minions()
 
     def begin(self):
         super(DeepSea, self).begin()
