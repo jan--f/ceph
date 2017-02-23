@@ -7,6 +7,7 @@ from teuthology.config import config as teuth_config
 from teuthology.exceptions import CommandFailedError
 from teuthology.repo_utils import fetch_repo
 from teuthology import misc
+from teuthology.orchestra import run
 from teuthology.salt import Salt
 from teuthology.task import Task
 from util import get_remote_for_role
@@ -36,8 +37,18 @@ class DeepSea(Task):
 
         self.log.info("master remote: {}".format(self.config["master_remote"]))
 
-        self.ctx.cluster.only(lambda role: role.startswith("master")).run(args=['git',
-            'clone', 'https://github.com/SUSE/DeepSea.git'])
+        self.ctx.cluster.only(lambda role: role.startswith("master")).run(args=[
+            'git',
+            'clone',
+            'https://github.com/SUSE/DeepSea.git',
+            run.Raw(';'),
+            'cd',
+            'DeepSea',
+            run.Raw(';'),
+            'sudo',
+            'make',
+            'install'
+            ])
 
         salt = Salt(self.ctx, self.config)
         salt.init_minions()
