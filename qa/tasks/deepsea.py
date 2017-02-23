@@ -25,6 +25,7 @@ class DeepSea(Task):
 
         self.config["master_remote"] = get_remote_for_role(self.ctx,
                 self.master).name
+        self.salt = Salt(self.ctx, self.config)
 
     def setup(self):
         super(DeepSea, self).setup()
@@ -50,17 +51,37 @@ class DeepSea(Task):
             'install'
             ])
 
-        salt = Salt(self.ctx, self.config)
-        salt.init_minions()
-        salt.start_master()
-        salt.start_minions()
-        salt.ping_minions()
+        self.salt.init_minions()
+        self.salt.start_master()
+        self.salt.start_minions()
 
     def begin(self):
         super(DeepSea, self).begin()
-        # clone deepsea repo on the master
+        self.test_stage_1_to_3()
 
     def end(self):
         super(DeepSea, self).end()
+
+    def test_stage_1_to_3(self):
+        self._emulate_stage_0()
+        self.__stage1()
+        # self.__stage2()
+        # self.__stage3()
+        # self.__is_cluster_healthy()
+
+    def __emulate_stage_0(self):
+        '''
+        stage 0 might reboot nodes. To avoid this for now lets emulate most parts of
+        it
+        '''
+        self.salt.master_remote.run(args = [
+            'sudo', 'salt', '*', 'ceph.sync',
+            'sudo', 'salt', '*', 'ceph.mines',
+            'sudo', 'salt', '*', 'ceph.packages.common',
+            ])
+
+    def __stage1(self):
+        self.salt.master_remote.run(args = [
+            'sudo', 'salt-run', 'state.orch', 'ceph.stage.1'])
 
 task = DeepSea
