@@ -10,3 +10,4 @@ roles:
 tasks:
 - deepsea:
     master: master.1
+- interactive:
