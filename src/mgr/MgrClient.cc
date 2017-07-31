@@ -267,8 +267,12 @@ void MgrClient::send_report()
         continue;
       }
 
+      if (!include_counter(data)) {
+        continue;
+      }
+
       if (session->declared.count(path) == 0) {
-	ldout(cct,20) << __func__ << " declare " << path << dendl;
+	ldout(cct,20) << " declare " << path << dendl;
 	PerfCounterType type;
 	type.path = path;
 	if (data.description) {
@@ -291,8 +295,11 @@ void MgrClient::send_report()
     }
     ENCODE_FINISH(report->packed);
 
-    ldout(cct, 20) << by_path.size() << " counters, of which "
-		   << report->declare_types.size() << " new" << dendl;
+    ldout(cct, 20) << "sending " << session->declared.size() << " counters ("
+                      "of possible " << by_path.size() << "), "
+		   << report->declare_types.size() << " new, "
+                   << report->undeclare_types.size() << " removed"
+                   << dendl;
   });
 
   ldout(cct, 20) << "encoded " << report->packed.length() << " bytes" << dendl;
@@ -339,6 +346,11 @@ bool MgrClient::handle_mgr_configure(MMgrConfigure *m)
   }
 
   ldout(cct, 4) << "stats_period=" << m->stats_period << dendl;
+
+  if (stats_threshold != m->stats_threshold) {
+    ldout(cct, 4) << "updated stats threshold: " << m->stats_threshold << dendl;
+    stats_threshold = m->stats_threshold;
+  }
 
   bool starting = (stats_period == 0) && (m->stats_period != 0);
   stats_period = m->stats_period;
