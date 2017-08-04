@@ -76,7 +76,16 @@ class Metric(object):
 
         def promethize(path):
             ''' replace illegal metric name characters '''
-            return path.replace('.', '_').replace('-', '_')
+            result = path.replace('.', '_').replace('+', '_plus').replace('::', '_')
+
+            # Hyphens usually turn into underscores, unless they are
+            # trailing
+            if result.endswith("-"):
+                result = result[0:-1] + "_minus"
+            else:
+                result = result.replace("-", "_")
+
+            return "ceph_{0}".format(result)
 
         def floatstr(value):
             ''' represent as Go-compatible float '''
