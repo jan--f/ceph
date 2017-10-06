@@ -717,17 +717,17 @@ PyObject* PyModules::get_perf_schema_python(
   Mutex::Locker l(lock);
   PyEval_RestoreThread(tstate);
 
-  DaemonStateCollection states;
+  DaemonStateCollection daemons;
 
   if (svc_type == "") {
-    states = daemon_state.get_all();
+    daemons = daemon_state.get_all();
   } else if (svc_id.empty()) {
-    states = daemon_state.get_by_service(svc_type);
+    daemons = daemon_state.get_by_service(svc_type);
   } else {
     auto key = DaemonKey(svc_type, svc_id);
     // so that the below can be a loop in all cases
     if (daemon_state.exists(key)) {
-      states[key] = daemon_state.get(key);
+      daemons[key] = daemon_state.get(key);
     }
   }
 
@@ -736,7 +736,8 @@ PyObject* PyModules::get_perf_schema_python(
     for (auto statepair : daemons) {
       auto key = statepair.first;
       auto state = statepair.second;
-      Mutex::Locker l(state->lock);
+
+      std::ostringstream daemon_name;
       daemon_name << key.first << "." << key.second;
       f.open_object_section(daemon_name.str().c_str());
 

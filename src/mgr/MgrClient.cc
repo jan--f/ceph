@@ -267,10 +267,6 @@ void MgrClient::send_report()
         continue;
       }
 
-      if (!include_counter(data)) {
-        continue;
-      }
-
       if (session->declared.count(path) == 0) {
 	ldout(cct,20) << " declare " << path << dendl;
 	PerfCounterType type;
