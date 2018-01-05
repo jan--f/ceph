@@ -511,7 +511,7 @@ $COSDDEBUG
 $COSDSHORT
 $extra_conf
 [mon]
-        mgr initial modules = restful status dashboard balancer
+        mgr initial modules = restful status dashboard balancer prometheus
         mon pg warn min per osd = 3
         mon osd allow primary affinity = true
         mon reweight min pgs per osd = 4
@@ -663,12 +663,17 @@ start_mgr() {
 EOF
 
 	ceph_adm config-key set mgr/dashboard/$name/server_port $MGR_PORT
-	DASH_URLS+="http://$IP:$MGR_PORT/"
+	DASH_URLS+="http://$IP:$MGR_PORT/ "
+	MGR_PORT=$(($MGR_PORT + 1000))
+
+	ceph_adm config-key set mgr/prometheus/$name/server_port $MGR_PORT
+
+	PROMETHEUS_URLS+="http://$IP:$MGR_PORT "
 	MGR_PORT=$(($MGR_PORT + 1000))
 
 	ceph_adm config-key set mgr/restful/$name/server_port $MGR_PORT
 
-	RESTFUL_URLS+="https://$IP:$MGR_PORT"
+	RESTFUL_URLS+="https://$IP:$MGR_PORT "
 	MGR_PORT=$(($MGR_PORT + 1000))
 
         echo "Starting mgr.${name}"
@@ -1034,8 +1039,9 @@ fi
 echo "started.  stop.sh to stop.  see out/* (e.g. 'tail -f out/????') for debug output."
 
 echo ""
-echo "dashboard urls: $DASH_URLS"
-echo "  restful urls: $RESTFUL_URLS"
+echo " dashboard urls: $DASH_URLS"
+echo "prometheus urls: $PROMETHEUS_URLS"
+echo "   restful urls: $RESTFUL_URLS"
 echo "  w/ user/pass: admin / $RESTFUL_SECRET"
 echo ""
 echo "export PYTHONPATH=./pybind:$PYTHONPATH"
