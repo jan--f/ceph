@@ -32,8 +32,16 @@ target_link_libraries(cephfs-data-scan librados cephfs mds osdc global
   cls_cephfs_client
   ${BLKID_LIBRARIES} ${CMAKE_DL_LIBS})
 
+set(cephfs_quota_srcs
+  cephfs-quote-scan.cc)
+add_executable(cephfs-quota ${cephfs_quota_srcs})
+target_link_libraries(cephfs-quota librados cephfs mds osdc global
+  cls_cephfs_client
+  ${BLKID_LIBRARIES} ${CMAKE_DL_LIBS})
+
 install(TARGETS
   cephfs-journal-tool
   cephfs-table-tool
   cephfs-data-scan
+  cephfs-quota
   DESTINATION bin)
