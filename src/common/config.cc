@@ -1050,13 +1050,13 @@ int md_config_t::set_val_impl(const std::string &raw_val, const Option &opt,
 
   Option::value_t new_value;
   if (opt.type == Option::TYPE_INT) {
-    int64_t f = strict_si_cast<int64_t>(val.c_str(), error_message);
+    int64_t f = strict_iecstrtoll(val.c_str(), error_message);
     if (!error_message->empty()) {
       return -EINVAL;
     }
     new_value = f;
   } else if (opt.type == Option::TYPE_UINT) {
-    uint64_t f = strict_si_cast<uint64_t>(val.c_str(), error_message);
+    uint64_t f = strict_iecstrtoll(val.c_str(), error_message);
     if (!error_message->empty()) {
       return -EINVAL;
     }

@@ -5281,7 +5281,7 @@ int OSDMonitor::normalize_profile(const string& profilename,
   auto it = profile.find("stripe_unit");
   if (it != profile.end()) {
     string err_str;
-    uint32_t stripe_unit = strict_si_cast<uint32_t>(it->second.c_str(), &err_str);
+    uint32_t stripe_unit = strict_iecstrtoll(it->second.c_str(), &err_str);
     if (!err_str.empty()) {
       *ss << "could not parse stripe_unit '" << it->second
 	  << "': " << err_str << std::endl;
@@ -5555,7 +5555,7 @@ int OSDMonitor::prepare_pool_stripe_width(const unsigned pool_type,
       auto it = profile.find("stripe_unit");
       if (it != profile.end()) {
 	string err_str;
-	stripe_unit = strict_si_cast<uint32_t>(it->second.c_str(), &err_str);
+	stripe_unit = strict_iecstrtoll(it->second.c_str(), &err_str);
 	assert(err_str.empty());
       }
       *stripe_width = data_chunks *
