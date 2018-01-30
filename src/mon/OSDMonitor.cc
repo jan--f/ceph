@@ -10869,11 +10869,11 @@ bool OSDMonitor::prepare_command_impl(MonOpRequestRef op,
     // val could contain unit designations, so we treat as a string
     string val;
     cmd_getval(cct, cmdmap, "val", val);
-    stringstream tss;
-    int64_t value = unit_to_bytesize(val, &tss);
-    if (value < 0) {
-      ss << "error parsing value '" << value << "': " << tss.str();
-      err = value;
+    string tss;
+    int64_t value = strict_iecstrtoll(val.c_str(), &tss);
+    if (!tss.empty()) {
+      ss << "error parsing value '" << val << "': " << tss;
+      err = -EINVAL;
       goto reply;
     }
 
