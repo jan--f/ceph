@@ -2603,11 +2603,12 @@ int main(int argc, const char **argv)
         return EINVAL;
       }
     } else if (ceph_argparse_witharg(args, i, &val, "--max-size", (char*)NULL)) {
-      max_size = strict_iecstrtoll(val.c_str(), &err);
-      if (!err.empty()) {
-        cerr << "ERROR: failed to parse max size: " << err << std::endl;
+      auto ret = strict_iecstrtoll(val.c_str());
+      if (!std::get<0>(ret)) {
+        cerr << "ERROR: failed to parse max size: " << *std::get<1>(ret) << std::endl;
         return EINVAL;
       }
+      max_size = *std::get<0>(ret);
       have_max_size = true;
     } else if (ceph_argparse_witharg(args, i, &val, "--max-objects", (char*)NULL)) {
       max_objects = (int64_t)strict_strtoll(val.c_str(), 10, &err);

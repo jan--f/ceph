@@ -40,12 +40,11 @@ void validate(boost::any& v, const std::vector<std::string>& values,
   po::validators::check_first_occurrence(v);
   const std::string &s = po::validators::get_single_string(values);
 
-  std::string parse_error;
-  uint64_t size = strict_iecstrtoll(s.c_str(), &parse_error);
-  if (!parse_error.empty()) {
+  auto ret = strict_iecstrtoll(s.c_str());
+  if (!std::get<0>(ret)) {
     throw po::validation_error(po::validation_error::invalid_option_value);
   }
-  v = boost::any(size);
+  v = boost::any(*std::get<0>(ret));
 }
 
 void validate(boost::any& v, const std::vector<std::string>& values,

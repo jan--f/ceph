@@ -246,12 +246,13 @@ unsigned default_op_size = 1 << 22;
 
 template <typename I, typename T>
 static int rados_sistrtoll(I &i, T *val) {
-  std::string err;
-  *val = strict_iecstrtoll(i->second.c_str(), &err);
-  if (err != "") {
-    cerr << "Invalid value for " << i->first << ": " << err << std::endl;
+  auto ret = strict_iecstrtoll(i->second.c_str());
+  if (!std::get<0>(ret)) {
+    cerr << "Invalid value for " << i->first << ": " << *std::get<1>(ret) << std::endl;
+    *val = 0;
     return -EINVAL;
   } else {
+    *val = *std::get<0>(ret);
     return 0;
   }
 }

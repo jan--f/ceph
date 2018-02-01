@@ -15,64 +15,85 @@
 #include "strtol.h"
 
 #include <climits>
-#include <limits>
 #include <cmath>
+#include <limits>
+#include <optional>
 #include <sstream>
 #include <string_view>
+#include <tuple>
 
 using std::ostringstream;
+template <class T>
+using opt_tuple = std::tuple<std::optional<T>, std::optional<std::string>>;
 
-long long strict_strtoll(const std::string_view str, int base, std::string *err)
+opt_tuple<long long> strict_strtoll(const std::string_view str, int base)
 {
-  ostringstream errStr;
+  ostringstream err;
   if (auto invalid = str.find_first_not_of("0123456789-+");
       invalid != std::string_view::npos ||
       invalid == 0) {
-    errStr << "The option value '" << str << "' contains invalid digits";
-    *err =  errStr.str();
-    return 0;
+    err << "The option value '" << str << "' contains invalid digits";
+    return std::tuple{std::optional<long long>(), err.str()};
   }
   char *endptr;
   errno = 0; /* To distinguish success/failure after call (see man page) */
   long long ret = strtoll(str.data(), &endptr, base);
 
   if (endptr == str.data()) {
-    errStr << "Expected option value to be integer, got '" << str << "'";
-    *err =  errStr.str();
-    return 0;
+    err << "Expected option value to be integer, got '" << str << "'";
+    return std::tuple{std::optional<long long>(), err.str()};
   }
   if ((errno == ERANGE && (ret == LLONG_MAX || ret == LLONG_MIN))
       || (errno != 0 && ret == 0)) {
-    errStr << "The option value '" << str << "' seems to be invalid";
-    *err = errStr.str();
-    return 0;
+    err << "The option value '" << str << "' seems to be invalid";
+    return std::tuple{std::optional<long long>(), err.str()};
   }
-  *err = "";
-  return ret;
+  return std::tuple{ret, std::optional<std::string>()};
+}
+
+opt_tuple<long long> strict_strtoll(const char *str, int base)
+{
+  return strict_strtoll(std::string_view(str), base);
 }
 
 long long strict_strtoll(const char *str, int base, std::string *err)
 {
-  return strict_strtoll(std::string_view(str), base, err);
-}
-
-int strict_strtol(const std::string_view str, int base, std::string *err)
-{
-  ostringstream errStr;
-  long long ret = strict_strtoll(str, base, err);
-  if (!err->empty())
-    return 0;
-  if ((ret < INT_MIN) || (ret > INT_MAX)) {
-    errStr << "The option value '" << str << "' seems to be invalid";
-    *err = errStr.str();
+  opt_tuple<long long> ret = strict_strtoll(std::string_view(str), base);
+  if (std::get<0>(ret))
+    return *std::get<0>(ret);
+  else {
+    *err = *std::get<1>(ret);
     return 0;
   }
-  return static_cast<int>(ret);
 }
 
+opt_tuple<int> strict_strtol(std::string_view str, int base)
+{
+  ostringstream err;
+  auto ret = strict_strtoll(str, base);
+  auto val = std::get<0>(ret);
+  if (!val)
+    return std::tuple{std::optional<int>(), std::get<1>(ret)};
+  if ((*val < INT_MIN) || (*val > INT_MAX)) {
+    err << "The option value '" << str << "' seems to be invalid";
+    return std::tuple{std::optional<int>(), err.str()};
+  }
+  return std::tuple{static_cast<int>(*val), std::optional<std::string>()};
+}
 int strict_strtol(const char *str, int base, std::string *err)
 {
-  return strict_strtol(std::string_view(str), base, err);
+  opt_tuple<int> ret = strict_strtol(std::string_view(str), base);
+  if (std::get<0>(ret))
+    return *std::get<0>(ret);
+  else {
+    *err = *std::get<1>(ret);
+    return 0;
+  }
+}
+
+opt_tuple<int> strict_strtol(char *str, int base)
+{
+  return strict_strtol(std::string_view(str), base);
 }
 
 double strict_strtod(const std::string_view str, std::string *err)
@@ -138,11 +159,12 @@ float strict_strtof(const char *str, std::string *err)
 }
 
 template<typename T>
-T strict_iec_cast(const std::string_view str, std::string *err)
+opt_tuple<T> strict_iec_cast(const std::string_view str)
 {
+  ostringstream err;
   if (str.empty()) {
-    *err = "strict_iecstrtoll: value not specified";
-    return 0;
+    err << "strict_iecstrtoll: value not specified";
+    return std::tuple{std::optional<long long>(), err.str()};
   }
   // get a view of the unit and of the value
   std::string_view unit;
@@ -157,13 +179,13 @@ T strict_iec_cast(const std::string_view str, std::string *err)
     // i.e. K, M, ... and Ki, Mi, ...
     if (unit.back() == 'i') {
       if (unit.front() == 'B') {
-        *err = "strict_iecstrtoll: illegal prefix \"Bi\"";
-        return 0;
+        err << "strict_iecstrtoll: illegal prefix \"Bi\"";
+        return std::tuple{std::optional<long long>(), err.str()};
       }
     }
     if (unit.length() > 2) {
-      *err = "strict_iecstrtoll: illegal prefix (length > 2)";
-      return 0;
+      err << "strict_iecstrtoll: illegal prefix (length > 2)";
+      return std::tuple{std::optional<long long>(), err.str()};
     }
     if (unit.front() == 'K')
       m = 10;
@@ -178,69 +200,74 @@ T strict_iec_cast(const std::string_view str, std::string *err)
     else if (unit.front() == 'E')
       m = 60;
     else if (unit.front() != 'B') {
-      *err = "strict_iecstrtoll: unit prefix not recognized";
-      return 0;
+      err << "strict_iecstrtoll: unit prefix not recognized";
+      return std::tuple{std::optional<long long>(), err.str()};
     }
   }
 
-  long long ll = strict_strtoll(n, 10, err);
-  if (ll < 0 && !std::numeric_limits<T>::is_signed) {
-    *err = "strict_iecstrtoll: value should not be negative";
-    return 0;
+  auto to_ll = strict_strtoll(n, 10);
+  auto ll = std::get<0>(to_ll);
+  if (!ll)
+    return to_ll;
+
+  if (*ll < 0 && !std::numeric_limits<T>::is_signed) {
+    err << "strict_iecstrtoll: value should not be negative";
+    return std::tuple{std::optional<long long>(), err.str()};
   }
   if (static_cast<unsigned>(m) >= sizeof(T) * CHAR_BIT) {
-    *err = ("strict_iecstrtoll: the IEC prefix is too large for the designated "
+    err << ("strict_iecstrtoll: the IEC prefix is too large for the designated "
         "type");
-    return 0;
+    return std::tuple{std::optional<long long>(), err.str()};
   }
-  using promoted_t = typename std::common_type<decltype(ll), T>::type;
-  if (static_cast<promoted_t>(ll) <
+  using promoted_t = typename std::common_type<decltype(*ll), T>::type;
+  if (static_cast<promoted_t>(*ll) <
       static_cast<promoted_t>(std::numeric_limits<T>::min()) >> m) {
-    *err = "strict_iecstrtoll: value seems to be too small";
-    return 0;
+    err << "strict_iecstrtoll: value seems to be too small";
+    return std::tuple{std::optional<long long>(), err.str()};
   }
-  if (static_cast<promoted_t>(ll) >
+  if (static_cast<promoted_t>(*ll) >
       static_cast<promoted_t>(std::numeric_limits<T>::max()) >> m) {
-    *err = "strict_iecstrtoll: value seems to be too large";
-    return 0;
+    err << "strict_iecstrtoll: value seems to be too large";
+    return std::tuple{std::optional<long long>(), err.str()};
   }
-  return (ll << m);
+  return std::tuple{(*ll << m), std::optional<std::string>()};
 }
 
-template int strict_iec_cast<int>(const std::string_view str, std::string *err);
-template long strict_iec_cast<long>(const std::string_view str, std::string *err);
-template long long strict_iec_cast<long long>(const std::string_view str, std::string *err);
-template uint64_t strict_iec_cast<uint64_t>(const std::string_view str, std::string *err);
-template uint32_t strict_iec_cast<uint32_t>(const std::string_view str, std::string *err);
+template opt_tuple<int> strict_iec_cast<int>(const std::string_view str);
+template opt_tuple<long> strict_iec_cast<long>(const std::string_view str);
+template opt_tuple<long long> strict_iec_cast<long long>(const std::string_view str);
+template opt_tuple<uint64_t> strict_iec_cast<uint64_t>(const std::string_view str);
+template opt_tuple<uint32_t> strict_iec_cast<uint32_t>(const std::string_view str);
 
-uint64_t strict_iecstrtoll(const std::string_view str, std::string *err)
+opt_tuple<uint64_t> strict_iecstrtoll(const std::string_view str)
 {
-  return strict_iec_cast<uint64_t>(str, err);
+  return strict_iec_cast<uint64_t>(str);
 }
 
-uint64_t strict_iecstrtoll(const char *str, std::string *err)
+opt_tuple<uint64_t> strict_iecstrtoll(const char *str)
 {
-  return strict_iec_cast<uint64_t>(std::string_view(str), err);
+  return strict_iec_cast<uint64_t>(std::string_view(str));
 }
 
 template<typename T>
-T strict_iec_cast(const char *str, std::string *err)
+opt_tuple<T> strict_iec_cast(const char *str)
 {
-  return strict_iec_cast<T>(std::string_view(str), err);
+  return strict_iec_cast<T>(std::string_view(str));
 }
 
-template int strict_iec_cast<int>(const char *str, std::string *err);
-template long strict_iec_cast<long>(const char *str, std::string *err);
-template long long strict_iec_cast<long long>(const char *str, std::string *err);
-template uint64_t strict_iec_cast<uint64_t>(const char *str, std::string *err);
-template uint32_t strict_iec_cast<uint32_t>(const char *str, std::string *err);
+template opt_tuple<int> strict_iec_cast<int>(const char *str);
+template opt_tuple<long> strict_iec_cast<long>(const char *str);
+template opt_tuple<long long> strict_iec_cast<long long>(const char *str);
+template opt_tuple<uint64_t> strict_iec_cast<uint64_t>(const char *str);
+template opt_tuple<uint32_t> strict_iec_cast<uint32_t>(const char *str);
 
 template<typename T>
-T strict_si_cast(const std::string_view str, std::string *err)
+opt_tuple<T> strict_si_cast(const std::string_view str)
 {
+  ostringstream err;
   if (str.empty()) {
-    *err = "strict_sistrtoll: value not specified";
-    return 0;
+    err << "strict_sistrtoll: value not specified";
+    return std::tuple{std::optional<T>(), err.str()};
   }
   std::string_view n = str;
   int m = 0;
@@ -260,57 +287,62 @@ T strict_si_cast(const std::string_view str, std::string *err)
     else if (u == 'E')
       m = 18;
     else if (u != 'B') {
-      *err = "strict_si_cast: unit prefix not recognized";
-      return 0;
+      err << "strict_si_cast: unit prefix not recognized";
+      return std::tuple{std::optional<T>(), err.str()};
     }
 
     if (m >= 3)
       n = str.substr(0, str.length() -1);
   }
 
-  long long ll = strict_strtoll(n, 10, err);
-  if (ll < 0 && !std::numeric_limits<T>::is_signed) {
-    *err = "strict_sistrtoll: value should not be negative";
-    return 0;
+  auto to_ll = strict_strtoll(n, 10);
+  auto ll = std::get<0>(to_ll);
+  // return if strict_strtoll returns an error
+  if (!ll)
+    return to_ll;
+
+  if (*ll < 0 && !std::numeric_limits<T>::is_signed) {
+    err << "strict_sistrtoll: value should not be negative";
+    return std::tuple{std::optional<T>(), err.str()};
   }
-  using promoted_t = typename std::common_type<decltype(ll), T>::type;
-  if (static_cast<promoted_t>(ll) <
+  using promoted_t = typename std::common_type<decltype(*ll), T>::type;
+  if (static_cast<promoted_t>(*ll) <
       static_cast<promoted_t>(std::numeric_limits<T>::min()) / pow (10, m)) {
-    *err = "strict_sistrtoll: value seems to be too small";
-    return 0;
+    err << "strict_sistrtoll: value seems to be too small";
+    return std::tuple{std::optional<T>(), err.str()};
   }
-  if (static_cast<promoted_t>(ll) >
+  if (static_cast<promoted_t>(*ll) >
       static_cast<promoted_t>(std::numeric_limits<T>::max()) / pow (10, m)) {
-    *err = "strict_sistrtoll: value seems to be too large";
-    return 0;
+    err << "strict_sistrtoll: value seems to be too large";
+    return std::tuple{std::optional<T>(), err.str()};
   }
-  return (ll * pow (10,  m));
+  return std::tuple{(*ll * pow (10,  m)), std::optional<std::string>()};
 }
 
-template int strict_si_cast<int>(const std::string_view str, std::string *err);
-template long strict_si_cast<long>(const std::string_view str, std::string *err);
-template long long strict_si_cast<long long>(const std::string_view str, std::string *err);
-template uint64_t strict_si_cast<uint64_t>(const std::string_view str, std::string *err);
-template uint32_t strict_si_cast<uint32_t>(const std::string_view str, std::string *err);
+template opt_tuple<int> strict_si_cast<int>(const std::string_view str);
+template opt_tuple<long> strict_si_cast<long>(const std::string_view str);
+template opt_tuple<long long> strict_si_cast<long long>(const std::string_view str);
+template opt_tuple<uint64_t> strict_si_cast<uint64_t>(const std::string_view str);
+template opt_tuple<uint32_t> strict_si_cast<uint32_t>(const std::string_view str);
 
-uint64_t strict_sistrtoll(const std::string_view str, std::string *err)
+opt_tuple<uint64_t> strict_sistrtoll(const std::string_view str)
 {
-  return strict_si_cast<uint64_t>(str, err);
+  return strict_si_cast<uint64_t>(str);
 }
 
-uint64_t strict_sistrtoll(const char *str, std::string *err)
+opt_tuple<uint64_t> strict_sistrtoll(const char *str)
 {
-  return strict_si_cast<uint64_t>(str, err);
+  return strict_si_cast<uint64_t>(str);
 }
 
 template<typename T>
-T strict_si_cast(const char *str, std::string *err)
+opt_tuple<T> strict_si_cast(const char *str)
 {
-  return strict_si_cast<T>(std::string_view(str), err);
+  return strict_si_cast<T>(std::string_view(str));
 }
 
-template int strict_si_cast<int>(const char *str, std::string *err);
-template long strict_si_cast<long>(const char *str, std::string *err);
-template long long strict_si_cast<long long>(const char *str, std::string *err);
-template uint64_t strict_si_cast<uint64_t>(const char *str, std::string *err);
-template uint32_t strict_si_cast<uint32_t>(const char *str, std::string *err);
+template opt_tuple<int> strict_si_cast<int>(const char *str);
+template opt_tuple<long> strict_si_cast<long>(const char *str);
+template opt_tuple<long long> strict_si_cast<long long>(const char *str);
+template opt_tuple<uint64_t> strict_si_cast<uint64_t>(const char *str);
+template opt_tuple<uint32_t> strict_si_cast<uint32_t>(const char *str);

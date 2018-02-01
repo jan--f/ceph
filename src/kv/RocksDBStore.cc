@@ -207,23 +207,21 @@ static int string2bool(const string &val, bool &b_val)
     return 0;
   }
 }
-  
+
 int RocksDBStore::tryInterpret(const string &key, const string &val, rocksdb::Options &opt)
 {
   if (key == "compaction_threads") {
-    std::string err;
-    int f = strict_iecstrtoll(val.c_str(), &err);
-    if (!err.empty())
+    auto f = std::get<0>(strict_iecstrtoll(val.c_str()));
+    if (!f)
       return -EINVAL;
     //Low priority threadpool is used for compaction
-    opt.env->SetBackgroundThreads(f, rocksdb::Env::Priority::LOW);
+    opt.env->SetBackgroundThreads(*f, rocksdb::Env::Priority::LOW);
   } else if (key == "flusher_threads") {
-    std::string err;
-    int f = strict_iecstrtoll(val.c_str(), &err);
-    if (!err.empty())
+    auto f = std::get<0>(strict_iecstrtoll(val.c_str()));
+    if (!f)
       return -EINVAL;
     //High priority threadpool is used for flusher
-    opt.env->SetBackgroundThreads(f, rocksdb::Env::Priority::HIGH);
+    opt.env->SetBackgroundThreads(*f, rocksdb::Env::Priority::HIGH);
   } else if (key == "compact_on_mount") {
     int ret = string2bool(val, compact_on_mount);
     if (ret != 0)

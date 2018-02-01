@@ -5280,13 +5280,13 @@ int OSDMonitor::normalize_profile(const string& profilename,
 
   auto it = profile.find("stripe_unit");
   if (it != profile.end()) {
-    string err_str;
-    uint32_t stripe_unit = strict_iecstrtoll(it->second.c_str(), &err_str);
-    if (!err_str.empty()) {
+    auto ret = strict_iecstrtoll(it->second.c_str());
+    if (!std::get<0>(ret)) {
       *ss << "could not parse stripe_unit '" << it->second
-	  << "': " << err_str << std::endl;
+	  << "': " << *std::get<1>(ret)<< std::endl;
       return -EINVAL;
     }
+    uint32_t stripe_unit = *std::get<0>(ret);
     uint32_t data_chunks = erasure_code->get_data_chunk_count();
     uint32_t chunk_size = erasure_code->get_chunk_size(stripe_unit * data_chunks);
     if (chunk_size != stripe_unit) {
@@ -5554,9 +5554,9 @@ int OSDMonitor::prepare_pool_stripe_width(const unsigned pool_type,
       uint32_t stripe_unit = g_conf->get_val<uint64_t>("osd_pool_erasure_code_stripe_unit");
       auto it = profile.find("stripe_unit");
       if (it != profile.end()) {
-	string err_str;
-	stripe_unit = strict_iecstrtoll(it->second.c_str(), &err_str);
-	assert(err_str.empty());
+        auto ret = std::get<0>(strict_iecstrtoll(it->second.c_str()));
+        assert(ret);
+        stripe_unit = *ret;
       }
       *stripe_width = data_chunks *
 	erasure_code->get_chunk_size(stripe_unit * data_chunks);
@@ -10869,13 +10869,13 @@ bool OSDMonitor::prepare_command_impl(MonOpRequestRef op,
     // val could contain unit designations, so we treat as a string
     string val;
     cmd_getval(cct, cmdmap, "val", val);
-    string tss;
-    int64_t value = strict_iecstrtoll(val.c_str(), &tss);
-    if (!tss.empty()) {
-      ss << "error parsing value '" << val << "': " << tss;
+    auto ret = strict_iecstrtoll(val.c_str());
+    if (!std::get<0>(ret)) {
+      ss << "error parsing value '" << val << "': " << *std::get<1>(ret);
       err = -EINVAL;
       goto reply;
     }
+    int64_t value = *std::get<0>(ret);
 
     pg_pool_t *pi = pending_inc.get_new_pool(pool_id, osdmap.get_pg_pool(pool_id));
     if (field == "max_objects") {

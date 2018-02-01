@@ -142,9 +142,8 @@ TEST(StrToL, Error1) {
 
 static void test_strict_iecstrtoll(const char *str)
 {
-  std::string err;
-  strict_iecstrtoll(str, &err);
-  ASSERT_EQ(err, "");
+  auto ret = strict_iecstrtoll(str);
+  ASSERT_TRUE(std::get<0>(ret));
 }
 
 static void test_strict_iecstrtoll_units(const std::string& foo,
@@ -153,16 +152,15 @@ static void test_strict_iecstrtoll_units(const std::string& foo,
   std::string s(foo);
   s.append(u);
   const char *str = s.c_str();
-  std::string err;
-  uint64_t r = strict_iecstrtoll(str, &err);
-  ASSERT_EQ(err, "");
+  auto r = strict_iecstrtoll(str);
+  ASSERT_TRUE(std::get<0>(r));
 
   str = foo.c_str();
-  std::string err2;
-  long long tmp = strict_strtoll(str, 10, &err2);
-  ASSERT_EQ(err2, "");
-  tmp = (tmp << m);
-  ASSERT_EQ(tmp, (long long)r);
+  auto tmp = strict_strtoll(str, 10);
+  ASSERT_TRUE(std::get<0>(tmp));
+  long long val = *std::get<0>(tmp);
+  val = (val <<  m);
+  ASSERT_EQ(val, (long long)*std::get<0>(r));
 }
 
 TEST(IECStrToLL, WithUnits) {
@@ -198,9 +196,8 @@ TEST(IECStrToLL, WithoutUnits) {
 
 static void test_strict_iecstrtoll_err(const char *str)
 {
-  std::string err;
-  strict_iecstrtoll(str, &err);
-  ASSERT_NE(err, "");
+  auto ret = strict_iecstrtoll(str);
+  ASSERT_TRUE(std::get<1>(ret));
 }
 
 TEST(IECStrToLL, Error) {
@@ -238,44 +235,37 @@ TEST(IECStrToLL, Error) {
 // of cases are covered by existing test cases of strict_iecstrtoll already.
 TEST(StrictIECCast, Error) {
   {
-    std::string err;
     // the SI prefix is way too large for `int`.
-    (void)strict_iec_cast<int>("2E", &err);
-    ASSERT_NE(err, "");
+    auto ret = strict_iec_cast<int>("2E");
+    ASSERT_TRUE(std::get<1>(ret));
   }
   {
-    std::string err;
-    (void)strict_iec_cast<int>("-2E", &err);
-    ASSERT_NE(err, "");
+    auto ret = strict_iec_cast<int>("-2E");
+    ASSERT_TRUE(std::get<1>(ret));
   }
   {
-    std::string err;
-    (void)strict_iec_cast<int>("1T", &err);
-    ASSERT_NE(err, "");
+    auto ret = strict_iec_cast<int>("1T");
+    ASSERT_TRUE(std::get<1>(ret));
   }
   {
-    std::string err;
-    (void)strict_iec_cast<int64_t>("2E", &err);
-    ASSERT_EQ(err, "");
+    auto ret = strict_iec_cast<int64_t>("2E");
+    ASSERT_TRUE(std::get<0>(ret));
   }
   {
-    std::string err;
-    (void)strict_iec_cast<int64_t>("-2E", &err);
-    ASSERT_EQ(err, "");
+    auto ret = strict_iec_cast<int64_t>("-2E");
+    ASSERT_TRUE(std::get<0>(ret));
   }
   {
-    std::string err;
-    (void)strict_iec_cast<int64_t>("1T", &err);
-    ASSERT_EQ(err, "");
+    auto ret = strict_iec_cast<int64_t>("1T");
+    ASSERT_TRUE(std::get<0>(ret));
   }
 }
 
 
 static void test_strict_sistrtoll(const char *str)
 {
-  std::string err;
-  strict_sistrtoll(str, &err);
-  ASSERT_EQ(err, "");
+  auto ret = strict_sistrtoll(str);
+  ASSERT_TRUE(std::get<0>(ret));
 }
 
 static void test_strict_sistrtoll_units(const std::string& foo,
@@ -284,16 +274,15 @@ static void test_strict_sistrtoll_units(const std::string& foo,
   std::string s(foo);
   s.append(u);
   const char *str = s.c_str();
-  std::string err;
-  uint64_t r = strict_sistrtoll(str, &err);
-  ASSERT_EQ(err, "");
+  auto r = strict_sistrtoll(str);
+  ASSERT_TRUE(std::get<0>(r));
 
   str = foo.c_str();
-  std::string err2;
-  long long tmp = strict_strtoll(str, 10, &err2);
-  ASSERT_EQ(err2, "");
-  tmp = (tmp *  m);
-  ASSERT_EQ(tmp, (long long)r);
+  auto tmp = strict_strtoll(str, 10);
+  ASSERT_TRUE(std::get<0>(tmp));
+  long long val = *std::get<0>(tmp);
+  val = (val *  m);
+  ASSERT_EQ(val, (long long)*std::get<0>(r));
 }
 
 TEST(SIStrToLL, WithUnits) {
@@ -322,9 +311,8 @@ TEST(SIStrToLL, WithoutUnits) {
 
 static void test_strict_sistrtoll_err(const char *str)
 {
-  std::string err;
-  strict_sistrtoll(str, &err);
-  ASSERT_NE(err, "");
+  auto ret = strict_sistrtoll(str);
+  ASSERT_TRUE(std::get<1>(ret));
 }
 
 TEST(SIStrToLL, Error) {
@@ -363,35 +351,29 @@ TEST(SIStrToLL, Error) {
 // of cases are covered by existing test cases of strict_sistrtoll already.
 TEST(StrictSICast, Error) {
   {
-    std::string err;
     // the SI prefix is way too large for `int`.
-    (void)strict_si_cast<int>("2E", &err);
-    ASSERT_NE(err, "");
+    auto ret = strict_si_cast<int>("2E");
+    ASSERT_TRUE(std::get<1>(ret));
   }
   {
-    std::string err;
-    (void)strict_si_cast<int>("-2E", &err);
-    ASSERT_NE(err, "");
+    auto ret = strict_si_cast<int>("-2E");
+    ASSERT_TRUE(std::get<1>(ret));
   }
   {
-    std::string err;
-    (void)strict_si_cast<int>("1T", &err);
-    ASSERT_NE(err, "");
+    auto ret = strict_si_cast<int>("1T");
+    ASSERT_TRUE(std::get<1>(ret));
   }
   {
-    std::string err;
-    (void)strict_si_cast<int64_t>("2E", &err);
-    ASSERT_EQ(err, "");
+    auto ret = strict_si_cast<int64_t>("2E");
+    ASSERT_TRUE(std::get<0>(ret));
   }
   {
-    std::string err;
-    (void)strict_si_cast<int64_t>("-2E", &err);
-    ASSERT_EQ(err, "");
+    auto ret = strict_si_cast<int64_t>("-2E");
+    ASSERT_TRUE(std::get<0>(ret));
   }
   {
-    std::string err;
-    (void)strict_si_cast<int64_t>("1T", &err);
-    ASSERT_EQ(err, "");
+    auto ret = strict_si_cast<int64_t>("1T");
+    ASSERT_TRUE(std::get<0>(ret));
   }
 }
 

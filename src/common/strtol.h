@@ -15,12 +15,20 @@
 #ifndef CEPH_COMMON_STRTOL_H
 #define CEPH_COMMON_STRTOL_H
 
+#include <optional>
 #include <string>
 extern "C" {
 #include <stdint.h>
 }
 
+template <class T>
+using opt_tuple = std::tuple<std::optional<T>, std::optional<std::string>>;
+
+opt_tuple<long long> strict_strtoll(const std::string_view str, int base);
+
 long long strict_strtoll(const char *str, int base, std::string *err);
+
+opt_tuple<int> strict_strtol(const std::string_view str, int base);
 
 int strict_strtol(const char *str, int base, std::string *err);
 
@@ -28,15 +36,15 @@ double strict_strtod(const char *str, std::string *err);
 
 float strict_strtof(const char *str, std::string *err);
 
-uint64_t strict_iecstrtoll(const char *str, std::string *err);
+opt_tuple<uint64_t> strict_iecstrtoll(const char *str);
 
 template<typename T>
-T strict_iec_cast(const char *str, std::string *err);
+opt_tuple<T> strict_iec_cast(const char *str);
 
-uint64_t strict_sistrtoll(const char *str, std::string *err);
+opt_tuple<uint64_t> strict_sistrtoll(const char *str);
 
 template<typename T>
-T strict_si_cast(const char *str, std::string *err);
+opt_tuple<T> strict_si_cast(const std::string_view str);
 
 /* On enter buf points to the end of the buffer, e.g. where the least
  * significant digit of the input number will be printed. Returns pointer to
