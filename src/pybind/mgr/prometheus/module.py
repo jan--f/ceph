@@ -280,7 +280,7 @@ class Module(MgrModule):
             dev_class = next((osd for osd in osd_devices if osd['id'] == id_))
             self.metrics['osd_metadata'].set(0, (
                 c_addr,
-                dev_class['class'],
+                dev_class.get('class', ''),
                 id_,
                 p_addr
             ))
