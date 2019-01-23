@@ -9,6 +9,7 @@ class Strategy(object):
         empty list for wal_devs.
         '''
         self.args = args
+        self.osd_ids = args.osd_ids
         self.osds_per_device = args.osds_per_device
         self.devices = data_devs + wal_devs + db_or_journal_devs
         self.data_devs = data_devs
