@@ -144,7 +144,7 @@ class RankEvicter(threading.Thread):
             time.sleep(self.POLL_PERIOD)
             self._ready_waited += self.POLL_PERIOD
 
-            self._mds_map = self._volume_client._rados_command("mds dump", {})
+            self._mds_map = self._volume_client.get_mds_map()
 
     def _evict(self):
         """
@@ -176,7 +176,7 @@ class RankEvicter(threading.Thread):
                 return True
             elif ret == errno.ETIMEDOUT:
                 # Oh no, the MDS went laggy (that's how libcephfs knows to emit this error)
-                self._mds_map = self._volume_client._rados_command("mds dump", {})
+                self._mds_map = self._volume_client.get_mds_map()
                 try:
                     self._wait_for_ready()
                 except self.GidGone:
@@ -243,7 +243,8 @@ class CephFSVolumeClient(object):
     DEFAULT_VOL_PREFIX = "/volumes"
     DEFAULT_NS_PREFIX = "fsvolumens_"
 
-    def __init__(self, auth_id, conf_path, cluster_name, volume_prefix=None, pool_ns_prefix=None):
+    def __init__(self, auth_id, conf_path, cluster_name, volume_prefix=None,
+                 pool_ns_prefix=None):
         self.fs = None
         self.rados = None
         self.connected = False
@@ -259,6 +260,10 @@ class CephFSVolumeClient(object):
         self._id = struct.unpack(">Q", uuid.uuid1().bytes[0:8])[0]
 
         # TODO: version the on-disk structures
+
+    def get_mds_map(self):
+        fs_map = self._rados_command("fs dump", {})
+        return fs_map['filesystems'][0]['mdsmap']
 
     def recover(self):
         # Scan all auth keys to see if they're dirty: if they are, they have
@@ -396,7 +401,7 @@ class CephFSVolumeClient(object):
 
         log.info("evict clients with {0}".format(', '.join(client_spec)))
 
-        mds_map = self._rados_command("mds dump", {})
+        mds_map = self.get_mds_map()
 
         up = {}
         for name, gid in mds_map['up'].items():
@@ -633,7 +638,7 @@ class CephFSVolumeClient(object):
             pool_name = "{0}{1}".format(self.POOL_PREFIX, volume_path.volume_id)
             log.info("create_volume: {0}, create pool {1} as data_isolated =True.".format(volume_path, pool_name))
             pool_id = self._create_volume_pool(pool_name)
-            mds_map = self._rados_command("mds dump", {})
+            mds_map = self.get_mds_map()
             if pool_id not in mds_map['data_pools']:
                 self._rados_command("mds add_data_pool", {
                     'pool': pool_name
@@ -743,7 +748,7 @@ class CephFSVolumeClient(object):
             pool_name = "{0}{1}".format(self.POOL_PREFIX, volume_path.volume_id)
             osd_map = self._rados_command("osd dump", {})
             pool_id = self._get_pool_id(osd_map, pool_name)
-            mds_map = self._rados_command("mds dump", {})
+            mds_map = self.get_mds_map()
             if pool_id in mds_map['data_pools']:
                 self._rados_command("mds remove_data_pool", {
                     'pool': pool_name
