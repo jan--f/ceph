@@ -237,6 +237,12 @@ class CephfsClient(object):
             return []
         return [mds['name'] for mds in fs['mdsmap']['info'].values()]
 
+    def get_metadata_pool(self, fs_name):
+        fs = self.get_fs(fs_name)
+        if fs:
+            return fs['mdsmap']['metadata_pool']
+        return None
+
 
 def colorize(msg, color, dark=False):
     """
