@@ -1,7 +1,17 @@
+import cephfs
 import contextlib
+import errno
 import os
 import socket
 import logging
+import time
+from threading import Lock
+try:
+    # py2
+    from threading import _Timer as Timer
+except ImportError:
+    #py3
+    from threading import Timer
 
 (
     BLACK,
@@ -21,6 +31,211 @@ BOLD_SEQ = "\033[1m"
 UNDERLINE_SEQ = "\033[4m"
 
 logger = logging.getLogger(__name__)
+
+
+class CephfsConnectionException(Exception):
+    def __init__(self, error_code, error_message):
+        self.errno = error_code
+        self.error_str = error_message
+
+    def to_tuple(self):
+        return self.errno, "", self.error_str
+
+    def __str__(self):
+        return "{0} ({1})".format(self.errno, self.error_str)
+
+
+class CephfsConnectionPool(object):
+    class Connection(object):
+        def __init__(self, mgr, fs_name):
+            self.fs = None
+            self.mgr = mgr
+            self.log = mgr.log
+            self.fs_name = fs_name
+            self.ops_in_progress = 0
+            self.last_used = time.time()
+            self.fs_id = self.get_fs_id()
+
+        def get_fs_id(self):
+            fs_map = self.mgr.get('fs_map')
+            for fs in fs_map['filesystems']:
+                if fs['mdsmap']['fs_name'] == self.fs_name:
+                    return fs['id']
+            raise CephfsConnectionException(
+                -errno.ENOENT, "Filesystem '{0}' not found".format(self.fs_name))
+
+        def get_fs_handle(self):
+            self.last_used = time.time()
+            self.ops_in_progress += 1
+            return self.fs
+
+        def put_fs_handle(self):
+            assert self.ops_in_progress > 0
+            self.ops_in_progress -= 1
+
+        def del_fs_handle(self):
+            if self.is_connection_valid():
+                self.disconnect()
+            else:
+                self.abort()
+
+        def is_connection_valid(self):
+            fs_id = None
+            try:
+                fs_id = self.get_fs_id()
+            except:
+                # the filesystem does not exist now -- connection is not valid.
+                pass
+            return self.fs_id == fs_id
+
+        def is_connection_idle(self, timeout):
+            return (self.ops_in_progress == 0 and
+                    ((time.time() - self.last_used) >= timeout))
+
+        def connect(self):
+            assert self.ops_in_progress == 0
+            self.log.debug("Connecting to cephfs '{0}'".format(self.fs_name))
+            self.fs = cephfs.LibCephFS(rados_inst=self.mgr.rados)
+            self.log.debug("Setting user ID and group ID of CephFS mount as root...")
+            self.fs.conf_set("client_mount_uid", "0")
+            self.fs.conf_set("client_mount_gid", "0")
+            self.log.debug("CephFS initializing...")
+            self.fs.init()
+            self.log.debug("CephFS mounting...")
+            self.fs.mount(filesystem_name=self.fs_name.encode('utf-8'))
+            self.log.debug("Connection to cephfs '{0}' complete".format(self.fs_name))
+
+        def disconnect(self):
+            assert self.ops_in_progress == 0
+            self.log.info("disconnecting from cephfs '{0}'".format(self.fs_name))
+            self.fs.shutdown()
+            self.fs = None
+
+        def abort(self):
+            assert self.ops_in_progress == 0
+            self.log.info("aborting connection from cephfs '{0}'".format(self.fs_name))
+            self.fs.abort_conn()
+            self.fs = None
+
+    class RTimer(Timer):
+        """
+        recurring timer variant of Timer
+        """
+        def run(self):
+            while not self.finished.is_set():
+                self.finished.wait(self.interval)
+                self.function(*self.args, **self.kwargs)
+            self.finished.set()
+
+    # TODO: make this configurable
+    TIMER_TASK_RUN_INTERVAL = 30.0   # seconds
+    CONNECTION_IDLE_INTERVAL = 60.0  # seconds
+
+    def __init__(self, mgr):
+        self.mgr = mgr
+        self.connections = {}
+        self.lock = Lock()
+        self.timer_task = CephfsConnectionPool.RTimer(
+            CephfsConnectionPool.TIMER_TASK_RUN_INTERVAL,
+            self.cleanup_connections)
+        self.timer_task.start()
+
+    def cleanup_connections(self):
+        with self.lock:
+            self.log.info("scanning for idle connections..")
+            idle_fs = [fs_name for fs_name, conn in
+                       self.connections.iteritems()
+                       if conn.is_connection_idle(
+                           CephfsConnectionPool.CONNECTION_IDLE_INTERVAL)]
+            for fs_name in idle_fs:
+                self.log.info("cleaning up connection for '{}'".format(fs_name))
+                self._del_fs_handle(fs_name)
+
+    def get_fs_handle(self, fs_name):
+        with self.lock:
+            conn = None
+            try:
+                conn = self.connections.get(fs_name, None)
+                if conn:
+                    if conn.is_connection_valid():
+                        return conn.get_fs_handle()
+                    else:
+                        # filesystem id changed beneath us (or the filesystem does not exist).
+                        # this is possible if the filesystem got removed (and recreated with
+                        # same name) via "ceph fs rm/new" mon command.
+                        self.log.warning("filesystem id changed for fs '{0}', reconnecting...".format(fs_name))
+                        self._del_fs_handle(fs_name)
+                conn = CephfsConnectionPool.Connection(self.mgr, fs_name)
+                conn.connect()
+            except cephfs.Error as e:
+                # try to provide a better error string if possible
+                if e.args[0] == errno.ENOENT:
+                    raise CephfsConnectionException(
+                        -errno.ENOENT, "Filesystem '{0}' not found".format(fs_name))
+                raise CephfsConnectionException(-e.args[0], e.args[1])
+            self.connections[fs_name] = conn
+            return conn.get_fs_handle()
+
+    def put_fs_handle(self, fs_name):
+        with self.lock:
+            conn = self.connections.get(fs_name, None)
+            if conn:
+                conn.put_fs_handle()
+
+    def _del_fs_handle(self, fs_name):
+        conn = self.connections.pop(fs_name, None)
+        if conn:
+            conn.del_fs_handle()
+
+    def del_fs_handle(self, fs_name):
+        with self.lock:
+            self._del_fs_handle(fs_name)
+
+
+def connection_pool_wrap(func):
+    """
+    decorator that wraps CephfsClient calls by transforming a fs name to a
+    fs_handle from the connection pool.
+    """
+    def conn_wrapper(self, fs_name, *args, **kwargs):
+        # fetch the connection from the pool
+        try:
+            fs_h = self.connection_pool.get_fs_handle(fs_name)
+        except CephfsConnectionException as ce:
+            return ce.to_tuple()
+
+        # invoke the actual routine w/ fs handle
+        # TODO maybe better pass an object here that behaves like the original
+        # arg (fs_name) but carries the handle as well or change handle
+        # implementation so that str(handle) -> name
+        result = func(self, (fs_name, fs_h), *args, **kwargs)
+
+        # hand over the connection back to the pool
+        if fs_h:
+            self.connection_pool.put_fs_handle(fs_name)
+            return result
+    return conn_wrapper
+
+
+class CephfsClient(object):
+
+    def __init__(self, mgr):
+        self.mgr = mgr
+        self.log = mgr.log
+        self.connection_pool = CephfsConnectionPool(self.mgr)
+
+    def get_fs(self, fs_name):
+        fs_map = self.mgr.get('fs_map')
+        for fs in fs_map['filesystems']:
+            if fs['mdsmap']['fs_name'] == fs_name:
+                return fs
+        return None
+
+    def get_mds_names(self, fs_name):
+        fs = self.get_fs(fs_name)
+        if fs is None:
+            return []
+        return [mds['name'] for mds in fs['mdsmap']['info'].values()]
 
 
 def colorize(msg, color, dark=False):
