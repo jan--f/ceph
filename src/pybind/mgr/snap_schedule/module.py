@@ -48,39 +48,6 @@ class Module(MgrModule):
     def snap_schedule_get(self, path, subvol=None, fs=DEFAULT_FS):
         raise NotImplementedError
 
-    @CLIWriteCommand('fs snap-schedule set',
-                     'name=path,type=CephString '
-                     'name=snap-schedule,type=CephString '
-                     'name=subvol,type=CephString,req=false '
-                     'name=fs,type=CephString,req=false',
-                     'Set a snapshot schedule for <path>')
-    def snap_schedule_set(self, path, snap_schedule, subvol=None, fs=DEFAULT_FS):
-        raise NotImplementedError
-
-    @CLIWriteCommand('fs snap-schedule rm',
-                     'name=path,type=CephString '
-                     'name=subvol,type=CephString,req=false '
-                     'name=fs,type=CephString,req=false',
-                     'Remove a snapshot schedule for <path>')
-    def snap_schedule_rm(self, path, subvol=None, fs=DEFAULT_FS):
-        raise NotImplementedError
-
-    @CLIReadCommand('fs snap-prune ls',
-                    'name=path,type=CephString,req=false '
-                    'name=subvol,type=CephString,req=false '
-                    'name=fs,type=CephString,req=false',
-                    'List current pruning schedules')
-    def prune_schedule_ls(self, path=None, subvol=None, fs=DEFAULT_FS):
-        raise NotImplementedError
-
-    @CLIReadCommand('fs snap-prune get',
-                    'name=path,type=CephString '
-                    'name=subvol,type=CephString,req=false '
-                    'name=fs,type=CephString,req=false',
-                    'Get current pruning schedule for <path>')
-    def prune_schedule_get(self, path, subvol=None, fs=DEFAULT_FS):
-        raise NotImplementedError
-
     prune_schedule_options = ('name=keep-minutely,type=CephString,req=false '
                               'name=keep-hourly,type=CephString,req=false '
                               'name=keep-daily,type=CephString,req=false '
@@ -90,58 +57,34 @@ class Module(MgrModule):
                               'name=keep-last,type=CephString,req=false '
                               'name=keep-within,type=CephString,req=false')
 
-    prune_apply_args = ('name=path,type=CephString '
-                        'name=subvol,type=CephString,req=false '
-                        'name=dry_run,type=CephString,req=false '
-                        'name=fs,type=CephString,req=false ')
-
-    @CLIWriteCommand('fs snap-prune apply',
-                     prune_apply_args + prune_schedule_options,
-                     'Apply a pruning schedule for <path>')
-    def prune_schedule_apply(self,
-                             path,
-                             subvol=None,
-                             dry_run=False,
-                             fs=DEFAULT_FS,
-                             keep_minutely=0,
-                             keep_hourly=0,
-                             keep_daily=0,
-                             keep_weekly=0,
-                             keep_monthly=0,
-                             keep_yearly=0,
-                             keep_last=0,
-                             keep_within=''):
+    @CLIWriteCommand('fs snap-schedule set',
+                     'name=path,type=CephString '
+                     'name=snap-schedule,type=CephString '
+                     'name=subvol,type=CephString,req=false '
+                     'name=fs,type=CephString,req=false ' +
+                     prune_schedule_options,
+                     'Set a snapshot schedule for <path>')
+    def snap_schedule_set(self,
+                          path,
+                          snap_schedule,
+                          subvol=None,
+                          fs=DEFAULT_FS,
+                          keep_minutely=0,
+                          keep_hourly=0,
+                          keep_daily=0,
+                          keep_weekly=0,
+                          keep_monthly=0,
+                          keep_yearly=0,
+                          keep_last=0,
+                          keep_within=''):
         raise NotImplementedError
 
-    prune_set_args = ('name=path,type=CephString '
-                      'name=subvol,type=CephString,req=false '
-                      'name=prune-schedule,type=CephString,req=false '
-                      'name=fs,type=CephString,req=false ')
-
-    @CLIWriteCommand('fs snap-prune set',
-                     prune_set_args + prune_schedule_options,
-                     'Set a pruning schedule for <path>')
-    def prune_schedule_set(self,
-                           path,
-                           subvol=None,
-                           fs=DEFAULT_FS,
-                           prune_schedule='',
-                           keep_minutely=0,
-                           keep_hourly=0,
-                           keep_daily=0,
-                           keep_weekly=0,
-                           keep_monthly=0,
-                           keep_yearly=0,
-                           keep_last=0,
-                           keep_within=''):
-        raise NotImplementedError
-
-    @CLIReadCommand('fs snap-prune rm',
-                    'name=path,type=CephString '
-                    'name=subvol,type=CephString,req=false '
-                    'name=fs,type=CephString,req=false',
-                    'Remove a pruning schedule for <path>')
-    def prune_schedule_rm(self, path, subvol=None, fs=DEFAULT_FS):
+    @CLIWriteCommand('fs snap-schedule rm',
+                     'name=path,type=CephString '
+                     'name=subvol,type=CephString,req=false '
+                     'name=fs,type=CephString,req=false',
+                     'Remove a snapshot schedule for <path>')
+    def snap_schedule_rm(self, path, subvol=None, fs=DEFAULT_FS):
         raise NotImplementedError
 
     @contextmanager
