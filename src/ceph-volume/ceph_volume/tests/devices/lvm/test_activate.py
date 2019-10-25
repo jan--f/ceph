@@ -251,7 +251,7 @@ class TestActivateFlags(object):
         args = ['0', 'asdf-ljh-asdf']
         activation = activate.Activate(args)
         activation.activate = capture
-        activation.main()
+        activation.bootstrap()
         parsed_args = capture.calls[0]['args'][0]
         assert parsed_args.filestore is False
         assert parsed_args.bluestore is True
@@ -260,7 +260,7 @@ class TestActivateFlags(object):
         args = ['--filestore', '0', 'asdf-ljh-asdf']
         activation = activate.Activate(args)
         activation.activate = capture
-        activation.main()
+        activation.bootstrap()
         parsed_args = capture.calls[0]['args'][0]
         assert parsed_args.filestore is True
         assert parsed_args.bluestore is False
@@ -269,7 +269,7 @@ class TestActivateFlags(object):
         args = ['--bluestore', '0', 'asdf-ljh-asdf']
         activation = activate.Activate(args)
         activation.activate = capture
-        activation.main()
+        activation.bootstrap()
         parsed_args = capture.calls[0]['args'][0]
         assert parsed_args.filestore is False
         assert parsed_args.bluestore is True
@@ -281,7 +281,7 @@ class TestActivateAll(object):
         monkeypatch.setattr('ceph_volume.devices.lvm.activate.direct_report', lambda: {})
         args = ['--all']
         activation = activate.Activate(args)
-        activation.main()
+        activation.bootstrap()
         out, err = capsys.readouterr()
         assert 'Was unable to find any OSDs to activate' in err
         assert 'Verify OSDs are present with ' in err
@@ -291,7 +291,7 @@ class TestActivateAll(object):
         monkeypatch.setattr('ceph_volume.devices.lvm.activate.systemctl.osd_is_active', lambda x: True)
         args = ['--all']
         activation = activate.Activate(args)
-        activation.main()
+        activation.bootstrap()
         out, err = capsys.readouterr()
         assert 'a8789a96ce8b process is active. Skipping activation' in err
         assert 'b8218eaa1634 process is active. Skipping activation' in err
@@ -302,7 +302,7 @@ class TestActivateAll(object):
         args = ['--all']
         activation = activate.Activate(args)
         activation.activate = capture
-        activation.main()
+        activation.bootstrap()
         calls = sorted(capture.calls, key=lambda x: x['kwargs']['osd_id'])
         assert calls[0]['kwargs']['osd_id'] == '0'
         assert calls[0]['kwargs']['osd_fsid'] == '957d22b7-24ce-466a-9883-b8218eaa1634'

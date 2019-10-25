@@ -291,7 +291,7 @@ class Zap(object):
         mlogger.info("Closing encrypted path %s", dmcrypt_path)
         encryption.dmcrypt_close(dmcrypt_path)
 
-    def main(self):
+    def bootstrap(self):
         sub_command_help = dedent("""
         Zaps the given logical volume(s), raw device(s) or partition(s) for reuse by ceph-volume.
         If given a path to a logical volume it must be in the format of vg/lv. Any
@@ -375,8 +375,11 @@ class Zap(object):
             print(sub_command_help)
             return
 
-        self.args = parser.parse_args(self.argv)
+        args = parser.parse_args(self.argv)
+        self.main(args)
 
+    def main(self, args):
+        self.args = args
         if self.args.osd_id or self.args.osd_fsid:
             self.zap_osd()
         else:

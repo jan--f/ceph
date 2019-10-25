@@ -4,14 +4,14 @@ from ceph_volume.devices import lvm
 
 class TestCreate(object):
 
-    def test_main_spits_help_with_no_arguments(self, capsys):
-        lvm.create.Create([]).main()
+    def test_bootstrap_spits_help_with_no_arguments(self, capsys):
+        lvm.create.Create([]).bootstrap()
         stdout, stderr = capsys.readouterr()
         assert 'Create an OSD by assigning an ID and FSID' in stdout
 
-    def test_main_shows_full_help(self, capsys):
+    def test_bootstrap_shows_full_help(self, capsys):
         with pytest.raises(SystemExit):
-            lvm.create.Create(argv=['--help']).main()
+            lvm.create.Create(argv=['--help']).bootstrap()
         stdout, stderr = capsys.readouterr()
         assert 'Use the filestore objectstore' in stdout
         assert 'Use the bluestore objectstore' in stdout
@@ -20,7 +20,8 @@ class TestCreate(object):
     def test_excludes_filestore_bluestore_flags(self, capsys, device_info):
         device_info()
         with pytest.raises(SystemExit):
-            lvm.create.Create(argv=['--data', '/dev/sdfoo', '--filestore', '--bluestore']).main()
+            lvm.create.Create(argv=['--data', '/dev/sdfoo', '--filestore',
+                                    '--bluestore']).bootstrap()
         stdout, stderr = capsys.readouterr()
         expected = 'Cannot use --filestore (filestore) with --bluestore (bluestore)'
         assert expected in stderr
@@ -31,7 +32,7 @@ class TestCreate(object):
             lvm.create.Create(argv=[
                 '--bluestore', '--data', '/dev/sdfoo',
                 '--journal', '/dev/sf14',
-            ]).main()
+            ]).bootstrap()
         stdout, stderr = capsys.readouterr()
         expected = 'Cannot use --bluestore (bluestore) with --journal (filestore)'
         assert expected in stderr
@@ -42,7 +43,7 @@ class TestCreate(object):
             lvm.create.Create(argv=[
                 '--bluestore', '--data', '/dev/sdfoo', '--block.db', 'vg/ceph1',
                 '--journal', '/dev/sf14',
-            ]).main()
+            ]).bootstrap()
         stdout, stderr = capsys.readouterr()
         expected = 'Cannot use --block.db (bluestore) with --journal (filestore)'
         assert expected in stderr

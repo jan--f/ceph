@@ -13,7 +13,7 @@ class Inventory(object):
     def __init__(self, argv):
         self.argv = argv
 
-    def main(self):
+    def bootstrap(self):
         parser = argparse.ArgumentParser(
             prog='ceph-volume inventory',
             formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -31,7 +31,11 @@ class Inventory(object):
             default='plain',
             help='Output format',
         )
-        self.args = parser.parse_args(self.argv)
+        args = parser.parse_args(self.argv)
+        self.main(args)
+
+    def main(self, args):
+        self.args = args
         if self.args.path:
             self.format_report(Device(self.args.path))
         else:

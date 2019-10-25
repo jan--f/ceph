@@ -32,7 +32,7 @@ class Trigger(object):
         self.argv = argv
 
     @decorators.needs_root
-    def main(self):
+    def bootstrap(self):
         sub_command_help = dedent("""
         ** DO NOT USE DIRECTLY **
         This tool is meant to help the systemd unit that knows about OSDs.
@@ -54,7 +54,9 @@ class Trigger(object):
             formatter_class=argparse.RawDescriptionHelpFormatter,
             description=sub_command_help,
         )
-
+        # TODO: it would be nicer if trigger would take osd_id and osd_uuid as
+        # pararmeters. Then we could simply pass on the parsed args to
+        # activate. Unsure about changing c-v-systemd in regards to upgrading.
         parser.add_argument(
             'systemd_data',
             metavar='SYSTEMD_DATA',
@@ -65,6 +67,17 @@ class Trigger(object):
             print(sub_command_help)
             return
         args = parser.parse_args(self.argv)
-        osd_id = parse_osd_id(args.systemd_data)
-        osd_uuid = parse_osd_uuid(args.systemd_data)
-        Activate(['--auto-detect-objectstore', osd_id, osd_uuid]).main()
+        self.main(args)
+
+    def main(self, args):
+        self.args = args
+        osd_id = parse_osd_id(self.args.systemd_data)
+        osd_uuid = parse_osd_uuid(self.args.systemd_data)
+        # need to create a namespace object. Better to change args, but see
+        # above.
+        ns = argparse.Namespace(auto_detect_objectstore=True,
+                                bluestore=True, filestore=False,
+                                activate_all=False,
+                                osd_id=osd_id,
+                                osd_uuid=osd_uuid)
+        Activate([]).main(ns)

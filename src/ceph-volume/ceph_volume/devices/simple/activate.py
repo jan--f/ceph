@@ -199,7 +199,7 @@ class Activate(object):
 
         terminal.success('Successfully activated OSD %s with FSID %s' % (osd_id, osd_fsid))
 
-    def main(self):
+    def bootstrap(self):
         sub_command_help = dedent("""
         Activate OSDs by mounting devices previously configured to their
         appropriate destination::
@@ -259,8 +259,12 @@ class Activate(object):
             print(sub_command_help)
             return
         args = parser.parse_args(self.argv)
-        if not args.file and not args.all:
-            if not args.osd_id and not args.osd_fsid:
+        self.main(args)
+
+    def main(self, args):
+        self.args = args
+        if not self.args.file and not self.args.all:
+            if not self.args.osd_id and not self.args.osd_fsid:
                 terminal.error('ID and FSID are required to find the right OSD to activate')
                 terminal.error('from a scanned OSD location in /etc/ceph/osd/')
                 raise RuntimeError('Unable to activate without both ID and FSID')
@@ -268,22 +272,22 @@ class Activate(object):
         # implicitly indicate that it would be possible to activate a json file
         # at a non-default location which would not work at boot time if the
         # custom location is not exposed through an ENV var
-        self.skip_systemd = args.skip_systemd
+        self.skip_systemd = self.args.skip_systemd
         json_dir = os.environ.get('CEPH_VOLUME_SIMPLE_JSON_DIR', '/etc/ceph/osd/')
-        if args.all:
-            if args.file or args.osd_id:
+        if self.args.all:
+            if self.args.file or self.args.osd_id:
                 mlogger.warn('--all was passed, ignoring --file and ID/FSID arguments')
             json_configs = glob.glob('{}/*.json'.format(json_dir))
             for json_config in json_configs:
                 mlogger.info('activating OSD specified in {}'.format(json_config))
-                args.json_config = json_config
-                self.activate(args)
+                self.args.json_config = json_config
+                self.activate(self.args)
         else:
-            if args.file:
-                json_config = args.file
+            if self.args.file:
+                json_config = self.args.file
             else:
-                json_config = os.path.join(json_dir, '%s-%s.json' % (args.osd_id, args.osd_fsid))
+                json_config = os.path.join(json_dir, '%s-%s.json' % (self.args.osd_id, self.args.osd_fsid))
             if not os.path.exists(json_config):
                 raise RuntimeError('Expected JSON config path not found: %s' % json_config)
-            args.json_config = json_config
-            self.activate(args)
+            self.args.json_config = json_config
+            self.activate(self.args)

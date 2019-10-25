@@ -36,7 +36,7 @@ class LVM(object):
     def print_help(self, sub_help):
         return self._help.format(sub_help=sub_help)
 
-    def main(self):
+    def bootstrap(self):
         terminal.dispatch(self.mapper, self.argv)
         parser = argparse.ArgumentParser(
             prog='ceph-volume lvm',

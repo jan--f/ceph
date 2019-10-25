@@ -19,7 +19,7 @@ class SubCommand(object):
     def __init__(self, argv):
         self.argv = argv
 
-    def main(self):
+    def bootstrap(self):
         pass
 
 
@@ -28,7 +28,7 @@ class BadSubCommand(object):
     def __init__(self, argv):
         self.argv = argv
 
-    def main(self):
+    def bootstrap(self):
         raise SystemExit(100)
 
 

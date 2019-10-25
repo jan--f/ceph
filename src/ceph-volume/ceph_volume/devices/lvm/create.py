@@ -23,13 +23,14 @@ class Create(object):
         if not args.osd_fsid:
             args.osd_fsid = system.generate_uuid()
         prepare_step = Prepare([])
-        prepare_step.safe_prepare(args)
+        prepare_step.main(args)
         osd_id = prepare_step.osd_id
         try:
             # we try this for activate only when 'creating' an OSD, because a rollback should not
             # happen when doing normal activation. For example when starting an OSD, systemd will call
             # activate, which would never need to be rolled back.
-            Activate([]).activate(args)
+            args.activate_all = False
+            Activate([]).main(args)
         except Exception:
             logger.exception('lvm activate was unable to complete, while creating the OSD')
             logger.info('will rollback OSD ID creation')
@@ -37,7 +38,7 @@ class Create(object):
             raise
         terminal.success("ceph-volume lvm create successful for: %s" % args.data)
 
-    def main(self):
+    def bootstrap(self):
         sub_command_help = dedent("""
         Create an OSD by assigning an ID and FSID, registering them with the
         cluster with an ID and FSID, formatting and mounting the volume, adding
@@ -62,8 +63,12 @@ class Create(object):
             return
         exclude_group_options(parser, groups=['filestore', 'bluestore'], argv=self.argv)
         args = parser.parse_args(self.argv)
+        self.main(args)
+
+    def main(self, args):
+        self.args = args
         # Default to bluestore here since defaulting it in add_argument may
         # cause both to be True
-        if not args.bluestore and not args.filestore:
-            args.bluestore = True
-        self.create(args)
+        if not self.args.bluestore and not self.args.filestore:
+            self.args.bluestore = True
+        self.create(self.args)

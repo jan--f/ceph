@@ -32,7 +32,7 @@ class Trigger(object):
         self.argv = argv
 
     @decorators.needs_root
-    def main(self):
+    def bootstrap(self):
         sub_command_help = dedent("""
         ** DO NOT USE DIRECTLY **
         This tool is meant to help the systemd unit that knows about OSDs.
@@ -65,6 +65,10 @@ class Trigger(object):
             print(sub_command_help)
             return
         args = parser.parse_args(self.argv)
-        osd_id = parse_osd_id(args.systemd_data)
-        osd_uuid = parse_osd_uuid(args.systemd_data)
-        Activate([osd_id, osd_uuid], from_trigger=True).main()
+        self.main(args)
+
+    def main(self, args):
+        self.args = args
+        osd_id = parse_osd_id(self.args.systemd_data)
+        osd_uuid = parse_osd_uuid(self.args.systemd_data)
+        Activate([osd_id, osd_uuid], from_trigger=True).bootstrap()

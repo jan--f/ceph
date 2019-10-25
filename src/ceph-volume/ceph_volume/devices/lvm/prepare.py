@@ -320,7 +320,7 @@ class Prepare(object):
                 osd_fsid,
             )
 
-    def main(self):
+    def bootstrap(self):
         sub_command_help = dedent("""
         Prepare an OSD by assigning an ID and FSID, registering them with the
         cluster with an ID and FSID, formatting and mounting the volume, and
@@ -352,7 +352,11 @@ class Prepare(object):
             print(sub_command_help)
             return
         exclude_group_options(parser, argv=self.argv, groups=['filestore', 'bluestore'])
-        self.args = parser.parse_args(self.argv)
+        args = parser.parse_args(self.argv)
+        self.main(args)
+
+    def main(self, args):
+        self.args = args
         # the unfortunate mix of one superset for both filestore and bluestore
         # makes this validation cumbersome
         if self.args.filestore:

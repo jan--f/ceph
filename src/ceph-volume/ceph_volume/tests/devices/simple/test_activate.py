@@ -14,11 +14,11 @@ class TestActivate(object):
     def test_invalid_json_path(self):
         os.environ['CEPH_VOLUME_SIMPLE_JSON_DIR'] = '/non/existing/path'
         with pytest.raises(RuntimeError) as error:
-            activate.Activate(['1', 'asdf']).main()
+            activate.Activate(['1', 'asdf']).bootstrap()
         assert 'Expected JSON config path not found' in str(error.value)
 
-    def test_main_spits_help_with_no_arguments(self, capsys):
-        activate.Activate([]).main()
+    def test_bootstrap_spits_help_with_no_arguments(self, capsys):
+        activate.Activate([]).bootstrap()
         stdout, stderr = capsys.readouterr()
         assert 'Activate OSDs by mounting devices previously configured' in stdout
 
@@ -37,7 +37,7 @@ class TestActivate(object):
             activate_files.append(args.json_config)
         monkeypatch.setattr('glob.glob', mock_glob)
         monkeypatch.setattr(activate.Activate, 'activate', mock_activate)
-        activate.Activate(['--all']).main()
+        activate.Activate(['--all']).bootstrap()
         assert activate_files == mocked_glob
 
 
@@ -49,7 +49,7 @@ class TestEnableSystemdUnits(object):
         json_config = tmpfile(contents='{}')
         activation = activate.Activate(['--no-systemd', '--file', json_config, '0', '1234'], from_trigger=True)
         activation.activate = lambda x: True
-        activation.main()
+        activation.bootstrap()
         activation.enable_systemd_units('0', '1234')
         stdout, stderr = capsys.readouterr()
         assert 'Skipping enabling of `simple`' in stderr
@@ -60,14 +60,14 @@ class TestEnableSystemdUnits(object):
         json_config = tmpfile(contents='{}')
         activation = activate.Activate(['--no-systemd', '--file', json_config, '0', '1234'], from_trigger=True)
         activation.activate = lambda x: True
-        activation.main()
+        activation.bootstrap()
         assert activation.skip_systemd is True
 
     def test_no_systemd_flag_is_false(self, tmpfile, is_root):
         json_config = tmpfile(contents='{}')
         activation = activate.Activate(['--file', json_config, '0', '1234'], from_trigger=True)
         activation.activate = lambda x: True
-        activation.main()
+        activation.bootstrap()
         assert activation.skip_systemd is False
 
     def test_masks_ceph_disk(self, tmpfile, is_root, monkeypatch, capture):
@@ -79,7 +79,7 @@ class TestEnableSystemdUnits(object):
         json_config = tmpfile(contents='{}')
         activation = activate.Activate(['--file', json_config, '0', '1234'], from_trigger=False)
         activation.activate = lambda x: True
-        activation.main()
+        activation.bootstrap()
         activation.enable_systemd_units('0', '1234')
         assert len(capture.calls) == 1
 
@@ -92,7 +92,7 @@ class TestEnableSystemdUnits(object):
         json_config = tmpfile(contents='{}')
         activation = activate.Activate(['--file', json_config, '0', '1234'], from_trigger=False)
         activation.activate = lambda x: True
-        activation.main()
+        activation.bootstrap()
         activation.enable_systemd_units('0', '1234')
         assert len(capture.calls) == 1
         assert capture.calls[0]['args'] == ('0', '1234', 'simple')
@@ -106,7 +106,7 @@ class TestEnableSystemdUnits(object):
         json_config = tmpfile(contents='{}')
         activation = activate.Activate(['--file', json_config, '0', '1234'], from_trigger=False)
         activation.activate = lambda x: True
-        activation.main()
+        activation.bootstrap()
         activation.enable_systemd_units('0', '1234')
         assert len(capture.calls) == 1
         assert capture.calls[0]['args'] == ('0',)
@@ -120,7 +120,7 @@ class TestEnableSystemdUnits(object):
         json_config = tmpfile(contents='{}')
         activation = activate.Activate(['--file', json_config, '0', '1234'], from_trigger=False)
         activation.activate = lambda x: True
-        activation.main()
+        activation.bootstrap()
         activation.enable_systemd_units('0', '1234')
         assert len(capture.calls) == 1
         assert capture.calls[0]['args'] == ('0',)

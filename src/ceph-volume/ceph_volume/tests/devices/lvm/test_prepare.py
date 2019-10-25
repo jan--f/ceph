@@ -4,19 +4,19 @@ from ceph_volume.devices import lvm
 
 class TestLVM(object):
 
-    def test_main_spits_help_with_no_arguments(self, capsys):
-        lvm.main.LVM([]).main()
+    def test_bootstrap_spits_help_with_no_arguments(self, capsys):
+        lvm.main.LVM([]).bootstrap()
         stdout, stderr = capsys.readouterr()
         assert 'Use LVM and LVM-based technologies like dmcache to deploy' in stdout
 
-    def test_main_shows_activate_subcommands(self, capsys):
-        lvm.main.LVM([]).main()
+    def test_bootstrap_shows_activate_subcommands(self, capsys):
+        lvm.main.LVM([]).bootstrap()
         stdout, stderr = capsys.readouterr()
         assert 'activate ' in stdout
         assert 'Discover and mount' in stdout
 
-    def test_main_shows_prepare_subcommands(self, capsys):
-        lvm.main.LVM([]).main()
+    def test_bootstrap_shows_prepare_subcommands(self, capsys):
+        lvm.main.LVM([]).bootstrap()
         stdout, stderr = capsys.readouterr()
         assert 'prepare ' in stdout
         assert 'Format an LVM device' in stdout
@@ -49,14 +49,14 @@ class TestGetClusterFsid(object):
 
 class TestPrepare(object):
 
-    def test_main_spits_help_with_no_arguments(self, capsys):
-        lvm.prepare.Prepare([]).main()
+    def test_bootstrap_spits_help_with_no_arguments(self, capsys):
+        lvm.prepare.Prepare([]).bootstrap()
         stdout, stderr = capsys.readouterr()
         assert 'Prepare an OSD by assigning an ID and FSID' in stdout
 
-    def test_main_shows_full_help(self, capsys):
+    def test_bootstrap_shows_full_help(self, capsys):
         with pytest.raises(SystemExit):
-            lvm.prepare.Prepare(argv=['--help']).main()
+            lvm.prepare.Prepare(argv=['--help']).bootstrap()
         stdout, stderr = capsys.readouterr()
         assert 'Use the filestore objectstore' in stdout
         assert 'Use the bluestore objectstore' in stdout
@@ -65,7 +65,8 @@ class TestPrepare(object):
     def test_excludes_filestore_bluestore_flags(self, capsys, device_info):
         device_info()
         with pytest.raises(SystemExit):
-            lvm.prepare.Prepare(argv=['--data', '/dev/sdfoo', '--filestore', '--bluestore']).main()
+            lvm.prepare.Prepare(argv=['--data', '/dev/sdfoo', '--filestore',
+                                      '--bluestore']).bootstrap()
         stdout, stderr = capsys.readouterr()
         expected = 'Cannot use --filestore (filestore) with --bluestore (bluestore)'
         assert expected in stderr
@@ -76,7 +77,7 @@ class TestPrepare(object):
             lvm.prepare.Prepare(argv=[
                 '--bluestore', '--data', '/dev/sdfoo',
                 '--journal', '/dev/sf14',
-            ]).main()
+            ]).bootstrap()
         stdout, stderr = capsys.readouterr()
         expected = 'Cannot use --bluestore (bluestore) with --journal (filestore)'
         assert expected in stderr
@@ -87,7 +88,7 @@ class TestPrepare(object):
             lvm.prepare.Prepare(argv=[
                 '--bluestore', '--data', '/dev/sdfoo', '--block.db', 'vg/ceph1',
                 '--journal', '/dev/sf14',
-            ]).main()
+            ]).bootstrap()
         stdout, stderr = capsys.readouterr()
         expected = 'Cannot use --block.db (bluestore) with --journal (filestore)'
         assert expected in stderr
@@ -96,7 +97,8 @@ class TestPrepare(object):
         monkeypatch.setattr("os.path.exists", lambda path: True)
         device_info()
         with pytest.raises(SystemExit) as error:
-            lvm.prepare.Prepare(argv=['--filestore', '--data', '/dev/sdfoo']).main()
+            lvm.prepare.Prepare(argv=['--filestore', '--data',
+                                      '/dev/sdfoo']).bootstrap()
         expected = '--journal is required when using --filestore'
         assert expected in str(error.value)
 
@@ -118,14 +120,14 @@ class TestGetJournalLV(object):
 
 class TestActivate(object):
 
-    def test_main_spits_help_with_no_arguments(self, capsys):
-        lvm.activate.Activate([]).main()
+    def test_bootstrap_spits_help_with_no_arguments(self, capsys):
+        lvm.activate.Activate([]).bootstrap()
         stdout, stderr = capsys.readouterr()
         assert 'Activate OSDs by discovering them with' in stdout
 
-    def test_main_shows_full_help(self, capsys):
+    def test_bootstrap_shows_full_help(self, capsys):
         with pytest.raises(SystemExit):
-            lvm.activate.Activate(argv=['--help']).main()
+            lvm.activate.Activate(argv=['--help']).bootstrap()
         stdout, stderr = capsys.readouterr()
         assert 'optional arguments' in stdout
         assert 'positional arguments' in stdout

@@ -263,7 +263,7 @@ class List(object):
 
         return report
 
-    def main(self):
+    def bootstrap(self):
         sub_command_help = dedent("""
         List devices or logical volumes associated with Ceph. An association is
         determined if a device has information relating to an OSD. This is
@@ -306,4 +306,8 @@ class List(object):
         )
 
         args = parser.parse_args(self.argv)
-        self.list(args)
+        self.main(args)
+
+    def main(self, args):
+        self.args = args
+        self.list(self.args)

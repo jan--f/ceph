@@ -208,19 +208,19 @@ class Scan(object):
         return osd_metadata
 
     @decorators.needs_root
-    def scan(self, args):
+    def scan(self):
         osd_metadata = {'cluster_name': conf.cluster}
         osd_path = None
-        logger.info('detecting if argument is a device or a directory: %s', args.osd_path)
-        if os.path.isdir(args.osd_path):
+        logger.info('detecting if argument is a device or a directory: %s', self.args.osd_path)
+        if os.path.isdir(self.args.osd_path):
             logger.info('will scan directly, path is a directory')
-            osd_path = args.osd_path
+            osd_path = self.args.osd_path
         else:
             # assume this is a device, check if it is mounted and use that path
             logger.info('path is not a directory, will check if mounted')
-            if system.device_is_mounted(args.osd_path):
+            if system.device_is_mounted(self.args.osd_path):
                 logger.info('argument is a device, which is mounted')
-                mounted_osd_paths = self.device_mounts.get(args.osd_path)
+                mounted_osd_paths = self.device_mounts.get(self.args.osd_path)
                 osd_path = mounted_osd_paths[0] if len(mounted_osd_paths) else None
 
         # argument is not a directory, and it is not a device that is mounted
@@ -232,12 +232,12 @@ class Scan(object):
             if self.is_encrypted:
                 if not self.encryption_metadata.get('lockbox'):
                     raise RuntimeError(
-                        'Lockbox partition was not found for device: %s' % args.osd_path
+                        'Lockbox partition was not found for device: %s' % self.args.osd_path
                     )
                 osd_metadata = self.scan_encrypted()
             else:
                 logger.info('device is not mounted, will mount it temporarily to scan')
-                with system.tmp_mount(args.osd_path) as osd_path:
+                with system.tmp_mount(self.args.osd_path) as osd_path:
                     osd_metadata = self.scan_directory(osd_path)
         else:
             if self.is_encrypted:
@@ -252,13 +252,13 @@ class Scan(object):
         filename = '%s-%s.json' % (osd_id, osd_fsid)
         json_path = os.path.join(self.etc_path, filename)
 
-        if os.path.exists(json_path) and not args.stdout:
-            if not args.force:
+        if os.path.exists(json_path) and not self.args.stdout:
+            if not self.args.force:
                 raise RuntimeError(
                     '--force was not used and OSD metadata file exists: %s' % json_path
                 )
 
-        if args.stdout:
+        if self.args.stdout:
             print(json.dumps(osd_metadata, indent=4, sort_keys=True, ensure_ascii=False))
         else:
             with open(json_path, 'w') as fp:
@@ -276,14 +276,14 @@ class Scan(object):
             terminal.success('    ceph-volume simple activate %s %s' % (osd_id, osd_fsid))
 
         if not osd_metadata.get('data'):
-            msg = 'Unable to determine device mounted on %s' % args.osd_path
+            msg = 'Unable to determine device mounted on %s' % self.args.osd_path
             logger.warning(msg)
             terminal.warning(msg)
             terminal.warning('OSD will not be able to start without this information:')
             terminal.warning('    "data": "/path/to/device",')
-            logger.warning('Unable to determine device mounted on %s' % args.osd_path)
+            logger.warning('Unable to determine device mounted on %s' % self.args.osd_path)
 
-    def main(self):
+    def bootstrap(self):
         sub_command_help = dedent("""
         Scan running OSDs, an OSD directory (or data device) for files and configurations
         that will allow to take over the management of the OSD.
@@ -342,9 +342,13 @@ class Scan(object):
         )
 
         args = parser.parse_args(self.argv)
+        self.main(args)
+
+    def main(self, args):
+        self.args = args
         paths = []
-        if args.osd_path:
-            paths.append(args.osd_path)
+        if self.args.osd_path:
+            paths.append(self.args.osd_path)
         else:
             osd_ids = systemctl.get_running_osd_ids()
             for osd_id in osd_ids:
@@ -358,19 +362,19 @@ class Scan(object):
         self.path_mounts = system.get_mounts(paths=True)
 
         for path in paths:
-            args.osd_path = path
-            device = Device(args.osd_path)
+            self.args.osd_path = path
+            device = Device(self.args.osd_path)
             if device.is_partition:
                 if device.ceph_disk.type != 'data':
                     label = device.ceph_disk.partlabel
                     msg = 'Device must be the ceph data partition, but PARTLABEL reported: "%s"' % label
                     raise RuntimeError(msg)
 
-            self.encryption_metadata = encryption.legacy_encrypted(args.osd_path)
+            self.encryption_metadata = encryption.legacy_encrypted(self.args.osd_path)
             self.is_encrypted = self.encryption_metadata['encrypted']
 
             device = Device(self.encryption_metadata['device'])
             if not device.is_ceph_disk_member:
                 terminal.warning("Ignoring %s because it's not a ceph-disk created osd." % path)
             else:
-                self.scan(args)
+                self.scan()

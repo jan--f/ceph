@@ -6,7 +6,7 @@ class TestBatch(object):
 
     def test_batch_instance(self, is_root):
         b = batch.Batch([])
-        b.main()
+        b.bootstrap()
 
     def test_get_devices(self, monkeypatch):
         return_value = {
@@ -60,6 +60,7 @@ class TestBatch(object):
         device1 = factory(used_by_ceph=False, available=True, abspath="/dev/sda")
         device2 = factory(used_by_ceph=False, available=True, abspath="/dev/sdb")
         b = batch.Batch([])
+        b.args = lambda: None
         b.args.devices = [device1, device2]
         b.args.db_devices = [device2]
         b._filter_devices()

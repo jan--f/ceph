@@ -266,7 +266,7 @@ class Activate(object):
         elif args.filestore:
             activate_filestore(lvs, no_systemd=args.no_systemd)
 
-    def main(self):
+    def bootstrap(self):
         sub_command_help = dedent("""
         Activate OSDs by discovering them with LVM and mounting them in their
         appropriate destination:
@@ -331,11 +331,15 @@ class Activate(object):
             print(sub_command_help)
             return
         args = parser.parse_args(self.argv)
+        self.main(args)
+
+    def main(self, args):
+        self.args = args
         # Default to bluestore here since defaulting it in add_argument may
         # cause both to be True
-        if not args.bluestore and not args.filestore:
-            args.bluestore = True
-        if args.activate_all:
-            self.activate_all(args)
+        if not self.args.bluestore and not self.args.filestore:
+            self.args.bluestore = True
+        if self.args.activate_all:
+            self.activate_all(self.args)
         else:
-            self.activate(args)
+            self.activate(self.args)

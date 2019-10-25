@@ -136,6 +136,9 @@ class Batch(object):
     """)
 
     def __init__(self, argv):
+        self.argv = argv
+
+    def bootstrap(self):
         parser = argparse.ArgumentParser(
             prog='ceph-volume lvm batch',
             formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -251,10 +254,11 @@ class Batch(object):
             default=[],
             help='Reuse existing OSD ids',
         )
-        self.args = parser.parse_args(argv)
         self.parser = parser
         for dev_list in ['', 'db_', 'wal_', 'journal_']:
             setattr(self, '{}usable'.format(dev_list), [])
+        args = parser.parse_args(self.argv)
+        self.main(args)
 
     def get_devices(self):
         # remove devices with partitions
@@ -303,7 +307,8 @@ class Batch(object):
         self.strategy = strategy.with_auto_devices(self.args, unused_devices)
 
     @decorators.needs_root
-    def main(self):
+    def main(self, args):
+        self.args = args
         if not self.args.devices:
             return self.parser.print_help()
 

@@ -190,8 +190,8 @@ def dispatch(mapper, argv=None):
     for count, arg in enumerate(argv, 1):
         if arg in mapper.keys():
             instance = mapper.get(arg)(argv[count:])
-            if hasattr(instance, 'main'):
-                instance.main()
+            if hasattr(instance, 'bootstrap'):
+                instance.bootstrap()
                 raise SystemExit(0)
 
 

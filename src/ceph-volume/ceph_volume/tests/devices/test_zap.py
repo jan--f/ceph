@@ -4,14 +4,14 @@ from ceph_volume.devices import lvm
 
 class TestZap(object):
 
-    def test_main_spits_help_with_no_arguments(self, capsys):
-        lvm.zap.Zap([]).main()
+    def test_bootstrap_spits_help_with_no_arguments(self, capsys):
+        lvm.zap.Zap([]).bootstrap()
         stdout, stderr = capsys.readouterr()
         assert 'Zaps the given logical volume(s), raw device(s) or partition(s)' in stdout
 
-    def test_main_shows_full_help(self, capsys):
+    def test_bootstrap_shows_full_help(self, capsys):
         with pytest.raises(SystemExit):
-            lvm.zap.Zap(argv=['--help']).main()
+            lvm.zap.Zap(argv=['--help']).bootstrap()
         stdout, stderr = capsys.readouterr()
         assert 'optional arguments' in stdout
 
@@ -23,6 +23,6 @@ class TestZap(object):
         monkeypatch.setattr('os.path.exists', lambda x: True)
         device_info()
         with pytest.raises(SystemExit):
-            lvm.zap.Zap(argv=[device_name]).main()
+            lvm.zap.Zap(argv=[device_name]).bootstrap()
         stdout, stderr = capsys.readouterr()
         assert 'Refusing to zap' in stderr
