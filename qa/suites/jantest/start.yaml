@@ -1,10 +1,6 @@
 tasks:
 - install:
 - cephadm:
-    conf:
-      mgr:
-        debug ms: 1
-        debug mgr: 20
--exec:
+- exec:
     client.0:
         - sleep 1000000000
