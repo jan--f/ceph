@@ -10,8 +10,14 @@
     - name: tell lvm to ignore loop devices
       lineinfile:
         path: /etc/lvm/lvm.conf
-        line: '        filter = [ "r|/dev/loop.*|", "a|.*|" ]'
+        line: '        global_filter = [ "r|loop|", "a|.*|" ]'
         insertafter: '^devices {'
+    - name: lvm allow changes depsite duplicate PVIDs
+      lineinfile:
+        path: /etc/lvm/lvm.conf
+        line: '        allow_changes_with_duplicate_pvs = 1'
+        insertafter: '^devices {'
+        regexp: 'allow_changes_with_duplicate_pvs = 0'
     - name: create mount points
       command: "mkdir /opt/{{ item }}"
       loop:
