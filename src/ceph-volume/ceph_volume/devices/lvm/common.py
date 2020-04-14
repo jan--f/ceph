@@ -44,8 +44,7 @@ common_args = {
     },
     '--data-size': {
         'help': 'Size of data LV in case a device was passed in --data',
-        'default': '0',
-        'type': disk.Size.parse
+        'default': 0,
     },
     '--data-slots': {
         'help': ('Intended number of slots on data device. The new OSD gets one'
@@ -93,8 +92,7 @@ bluestore_args = {
     '--block.db-size': {
         'dest': 'block_db_size',
         'help': 'Size of block.db LV in case device was passed in --block.db',
-        'default': '0',
-        'type': disk.Size.parse
+        'default': 0,
     },
     '--block.db-slots': {
         'dest': 'block_db_slots',
@@ -110,8 +108,7 @@ bluestore_args = {
     '--block.wal-size': {
         'dest': 'block_wal_size',
         'help': 'Size of block.wal LV in case device was passed in --block.wal',
-        'default': '0',
-        'type': disk.Size.parse
+        'default': 0,
     },
     '--block.wal-slots': {
         'dest': 'block_wal_slots',
@@ -132,8 +129,7 @@ filestore_args = {
     },
     '--journal-size': {
         'help': 'Size of journal LV in case a raw block device was passed in --journal',
-        'default': '0',
-        'type': disk.Size.parse
+        'default': 0,
     },
 }
 
