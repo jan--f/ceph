@@ -5,7 +5,6 @@ from functools import total_ordering
 from ceph_volume import sys_info, process
 from ceph_volume.api import lvm
 from ceph_volume.util import disk, system
-from ceph_volume.util.lsmdisk import LSMDisk
 from ceph_volume.util.constants import ceph_disk_guids
 
 report_template = """
