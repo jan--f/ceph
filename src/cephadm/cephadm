@@ -2257,7 +2257,7 @@ def deploy_daemon_units(fsid, uid, gid, daemon_type, daemon_id, c,
 
     # systemd
     install_base_units(fsid)
-    unit = get_unit_file(fsid)
+    unit = get_unit_file(fsid, daemon_type)
     unit_file = 'ceph-%s@.service' % (fsid)
     with open(args.unit_dir + '/' + unit_file + '.new', 'w') as f:
         f.write(unit)
@@ -2454,7 +2454,7 @@ def install_base_units(fsid):
 """ % fsid)
 
 
-def get_unit_file(fsid):
+def get_unit_file(fsid:
     # type: (str) -> str
     extra_args = ''
     if 'podman' in container_path:
@@ -2474,8 +2474,8 @@ Description=Ceph %i for {fsid}
 After=network-online.target local-fs.target time-sync.target
 Wants=network-online.target local-fs.target time-sync.target
 
-PartOf=ceph-{fsid}.target
-Before=ceph-{fsid}.target
+PartOf=ceph-%i-{fsid}.target
+Before=ceph-%i-{fsid}.target
 
 [Service]
 LimitNOFILE=1048576
@@ -2494,7 +2494,7 @@ StartLimitInterval=30min
 StartLimitBurst=5
 {extra_args}
 [Install]
-WantedBy=ceph-{fsid}.target
+WantedBy=ceph-%i-{fsid}.target
 """.format(
     container_path=container_path,
     fsid=fsid,
