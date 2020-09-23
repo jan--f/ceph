@@ -2407,6 +2407,27 @@ def install_base_units(fsid):
         call_throws(['systemctl', 'enable', 'ceph-%s.target' % fsid])
         call_throws(['systemctl', 'start', 'ceph-%s.target' % fsid])
 
+    for daemon_type in ['mon']:
+        # cluster unit
+        target_name = 'ceph-{}-{}.target'.format(daemon_type, fsid)
+        target_path = '{}/{}'.format(args.unit_dir, target_name)
+        existed = os.path.exists(target_path)
+        with open('{}.new'.format(target_path), 'w') as f:
+            f.write('[Unit]\n'
+                    'Description=Ceph cluster {fsid} - {daemon_type}s\n'
+                    'PartOf=ceph-{fsid}.target\n'
+                    'Before=ceph-{fsid}.target\n'
+                    '\n'
+                    '[Install]\n'
+                    'WantedBy=ceph-{fsid}.target\n'.format(
+                        fsid=fsid, daemon_type=daemon_type)
+            )
+            os.rename('{}.new'.format(target_path),
+                      target_path)
+        if not existed:
+            call_throws(['systemctl', 'enable', target_name])
+            call_throws(['systemctl', 'start', target_name])
+
     # logrotate for the cluster
     with open(args.logrotate_dir + '/ceph-%s' % fsid, 'w') as f:
         """
